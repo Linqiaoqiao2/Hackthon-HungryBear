@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, ScrollView, TouchableOpacity, View, Image, Dimensions } from 'react-native';
+import { StyleSheet, ScrollView, TouchableOpacity, View, Image, Dimensions, Switch } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useRouter } from 'expo-router';
-import { apiService, Recipe } from '@/services/api';
+import { apiService, Recipe, User } from '@/services/api';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2; // 2 columns with padding (16px padding on each side + 16px gap)
@@ -14,15 +14,94 @@ const getCardWidth = () => {
   const gap = 16; // gap between cards
   return (screenWidth - padding - gap) / 2;
 };
-
+const mockRecipes: Recipe[] = [
+  {
+    id: 1,
+    title: 'Pizza',
+    description: 'Delicious homemade pizza with pineapple, chicken, and fresh cilantro',
+    ingredients: 'Pizza dough, tomato sauce, mozzarella, pineapple, chicken, red onion, cilantro',
+    prepTime: '30 min',
+    instructions: 'Prepare dough, add toppings, bake at 200°C for 15 minutes',
+    image_url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=300&fit=crop',
+    visibility: 'public',
+    created_at: '2025-11-14T10:00:00Z',
+    updated_at: '2025-11-14T10:00:00Z',
+    author: {
+      id: 1,
+      username: 'Mengmeng',
+      email: 'mengmeng@example.com',
+      first_name: 'Mengmeng',
+      last_name: 'User',
+    } as User,
+  },
+  {
+    id: 2,
+    title: 'Pasta Carbonara',
+    description: 'Classic Italian pasta dish',
+    ingredients: 'Spaghetti, eggs, pancetta, parmesan, black pepper',
+    prepTime: '20 min',
+    instructions: 'Cook pasta, prepare sauce, combine and serve',
+    image_url: '',
+    visibility: 'public',
+    created_at: '2025-11-13T15:30:00Z',
+    updated_at: '2025-11-13T15:30:00Z',
+    author: {
+      id: 2,
+      username: 'Chef',
+      email: 'chef@example.com',
+      first_name: 'Chef',
+      last_name: 'Cook',
+    } as User,
+  },
+  {
+    id: 3,
+    title: 'Sushi Roll',
+    description: 'Fresh salmon and avocado sushi',
+    ingredients: 'Sushi rice, nori, salmon, avocado, cucumber',
+    prepTime: '45 min',
+    instructions: 'Prepare rice, roll with ingredients, slice and serve',
+    image_url: 'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=400&h=300&fit=crop',
+    visibility: 'public',
+    created_at: '2025-11-12T12:00:00Z',
+    updated_at: '2025-11-12T12:00:00Z',
+    author: {
+      id: 1,
+      username: 'Mengmeng',
+      email: 'mengmeng@example.com',
+      first_name: 'Mengmeng',
+      last_name: 'User',
+    } as User,
+  },
+  {
+    id: 4,
+    title: 'Chocolate Cake',
+    description: 'Rich and moist chocolate cake',
+    ingredients: 'Flour, sugar, cocoa, eggs, butter, milk',
+    prepTime: '60 min',
+    instructions: 'Mix ingredients, bake at 180°C for 35 minutes',
+    image_url: '',
+    visibility: 'public',
+    created_at: '2025-11-11T14:20:00Z',
+    updated_at: '2025-11-11T14:20:00Z',
+    author: {
+      id: 3,
+      username: 'Baker',
+      email: 'baker@example.com',
+      first_name: 'Baker',
+      last_name: 'Sweet',
+    } as User,
+  },
+];
 export default function FeedScreen() {
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [recipes, setRecipes] = useState<Recipe[]>(mockRecipes);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toggleStates, setToggleStates] = useState<{ [key: number]: boolean }>({});
   const router = useRouter();
 
   useEffect(() => {
-    loadRecipes();
+    // Uncomment to load from API
+    // loadRecipes();
   }, []);
 
   const loadRecipes = async () => {
@@ -46,33 +125,40 @@ export default function FeedScreen() {
   const stories = Array.from({ length: 6 }, (_, i) => ({ id: i }));
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Stories Section */}
-      <View style={styles.storiesSection}>
-        <ThemedText style={styles.sectionTitle}>Stories</ThemedText>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          style={styles.storiesScroll}
-          contentContainerStyle={styles.storiesContent}
-        >
-          {stories.map((story, index) => (
-            <TouchableOpacity
-              key={story.id}
-              style={styles.storyCircle}
-            >
-              {index === 0 ? (
-                <ThemedText style={styles.addStoryIcon}>+</ThemedText>
-              ) : (
-                <View style={styles.storyPlaceholder} />
-              )}
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+    <View style={styles.outerContainer}>
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={false}
+      >
+        {/* Stories Section */}
+        <View style={styles.storiesSection}>
+          <ThemedText style={styles.sectionTitle}>Stories</ThemedText>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            style={styles.storiesScroll}
+            contentContainerStyle={styles.storiesContent}
+          >
+            {stories.map((story, index) => (
+              <TouchableOpacity
+                key={story.id}
+                style={styles.storyCircle}
+              >
+                {index === 0 ? (
+                  <ThemedText style={styles.addStoryIcon}>+</ThemedText>
+                ) : (
+                  <View style={styles.storyPlaceholder} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
 
-      {/* Recipes Section */}
-      <View style={styles.recipesSection}>
+        {/* Recipes Section */}
+        <View style={styles.recipesSection}>
         <ThemedText style={styles.sectionTitle}>Recipes</ThemedText>
         {loading ? (
           <ThemedText style={styles.loadingText}>Loading...</ThemedText>
@@ -106,29 +192,57 @@ export default function FeedScreen() {
                   </View>
                 )}
                 <View style={styles.recipeCardContent}>
-                  <ThemedText style={styles.recipeTitle} numberOfLines={1} lightColor="#000" darkColor="#000">
-                    {recipe.title}
-                  </ThemedText>
-                  <View style={styles.recipeAuthor}>
-                    <View style={styles.authorAvatar} />
-                    <ThemedText style={[styles.authorName, { marginLeft: 6 }]} numberOfLines={1} lightColor="#666" darkColor="#666">
+                  <View style={styles.recipeHeader}>
+                    <ThemedText style={styles.recipeTitle} numberOfLines={1} lightColor="#000" darkColor="#000">
+                      {recipe.title}
+                    </ThemedText>
+                    <ThemedText style={styles.recipeDate} lightColor="#666" darkColor="#666">
+                      {new Date(recipe.created_at).toLocaleDateString('en-GB', { 
+                        day: '2-digit', 
+                        month: '2-digit', 
+                        year: 'numeric' 
+                      }).replace(/\./g, '/')}
+                    </ThemedText>
+                  </View>
+                  <View style={styles.divider} />
+                  <View style={styles.recipeToggleRow}>
+                    <ThemedText style={styles.toggleLabel} lightColor="#000" darkColor="#000">
                       {recipe.author.username}
                     </ThemedText>
+                    <Switch
+                      value={toggleStates[recipe.id] || false}
+                      onValueChange={(value) => setToggleStates({ ...toggleStates, [recipe.id]: value })}
+                      trackColor={{ false: '#E0E0E0', true: '#4CAF50' }}
+                      thumbColor={toggleStates[recipe.id] ? '#fff' : '#f4f3f4'}
+                    />
                   </View>
                 </View>
               </TouchableOpacity>
             ))}
           </View>
         )}
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  outerContainer: {
+    flex: 1,
+    backgroundColor: '#DAA520', // Yellow background for the entire screen
+    width: '100%',
+    height: '100%',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#DAA520', // Ensure container also has yellow background
+  },
+  scrollContent: {
+    flexGrow: 1,
+    backgroundColor: '#DAA520', // Yellow background extends with content
+    minHeight: '100%', // Ensure minimum height to fill screen
+    paddingBottom: 100, // Extra padding at bottom to ensure yellow background shows
   },
   // Stories Section
   storiesSection: {
@@ -173,9 +287,9 @@ const styles = StyleSheet.create({
   recipesSection: {
     backgroundColor: '#DAA520', // Mustard yellow
     paddingTop: 20,
-    paddingBottom: 20,
+    paddingBottom: 40, // Increased bottom padding for better scrolling
     paddingHorizontal: 16,
-    minHeight: 400,
+    flexGrow: 1, // Allow section to grow with content
   },
   loadingText: {
     color: '#fff',
@@ -228,27 +342,37 @@ const styles = StyleSheet.create({
   recipeCardContent: {
     padding: 12,
   },
+  recipeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   recipeTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: '#000',
-    marginBottom: 8,
-    minHeight: 20,
+    flex: 1,
   },
-  recipeAuthor: {
+  recipeDate: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    marginBottom: 8,
+  },
+  recipeToggleRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  authorAvatar: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#E0E0E0',
-  },
-  authorName: {
-    fontSize: 12,
-    color: '#666',
-    flex: 1,
+  toggleLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#000',
   },
   errorContainer: {
     padding: 16,
