@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { 
   StyleSheet, 
   ScrollView, 
@@ -6,13 +6,10 @@ import {
   Image, 
   TextInput, 
   TouchableOpacity,
-  Dimensions 
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { apiService, Recipe } from '@/services/api';
-
-const { width } = Dimensions.get('window');
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -22,13 +19,7 @@ export default function RecipeDetailScreen() {
   const [story, setStory] = useState('');
   const [cookDetails, setCookDetails] = useState('');
 
-  useEffect(() => {
-    if (id) {
-      loadRecipe(parseInt(id));
-    }
-  }, [id]);
-
-  const loadRecipe = async (recipeId: number) => {
+  const loadRecipe = useCallback(async (recipeId: number) => {
     try {
       // For now, use mock data. Uncomment to load from API:
       // const data = await apiService.getRecipe(recipeId);
@@ -62,7 +53,18 @@ export default function RecipeDetailScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (id) {
+      const recipeId = parseInt(id, 10);
+      if (!isNaN(recipeId)) {
+        loadRecipe(recipeId);
+      } else {
+        setLoading(false);
+      }
+    }
+  }, [id, loadRecipe]);
 
   if (loading) {
     return (
@@ -85,26 +87,25 @@ export default function RecipeDetailScreen() {
   }
 
   // Parse ingredients into array
-  const ingredientsList = recipe.ingredients.split('\n').filter(item => item.trim());
+  const ingredientsList = recipe.ingredients?.split('\n').filter(item => item.trim()) || [];
 
   // Parse instructions into steps
-  const stepsList = recipe.instructions.split('\n').filter(step => step.trim());
+  const stepsList = recipe.instructions?.split('\n').filter(step => step.trim()) || [];
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    }).replace(/\./g, '.');
+    try {
+      return new Date(dateString).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    } catch (error) {
+      return dateString;
+    }
   };
 
   return (
     <View style={styles.outerContainer}>
-      {/* Header Section - Dark Teal */}
-      <View style={styles.headerSection}>
-        <ThemedText style={styles.headerTitle}>Recipe detail</ThemedText>
-      </View>
-
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -134,7 +135,7 @@ export default function RecipeDetailScreen() {
               <ThemedText style={styles.recipeTitle}>{recipe.title}</ThemedText>
               <View style={styles.authorRow}>
                 <View style={styles.authorAvatar} />
-                <ThemedText style={styles.authorName}>{recipe.author.username}</ThemedText>
+                <ThemedText style={styles.authorName}>{recipe.author?.username || 'Unknown'}</ThemedText>
               </View>
             </View>
             <TouchableOpacity style={styles.cookingModeButton}>
@@ -158,43 +159,54 @@ export default function RecipeDetailScreen() {
           {/* Ingredients */}
           <View style={styles.ingredientsSection}>
             <ThemedText style={styles.sectionLabel}>Ingredients</ThemedText>
-            {ingredientsList.map((ingredient, index) => {
-              const parts = ingredient.split(':');
-              const name = parts[0]?.trim() || ingredient;
-              const amount = parts[1]?.trim() || '';
-              return (
-                <View key={index} style={styles.ingredientRow}>
-                  <TextInput
-                    style={styles.ingredientInput}
-                    value={`${name}${amount ? `: ${amount}` : ''}`}
-                    placeholderTextColor="#999"
-                  />
-                </View>
-              );
-            })}
+            {ingredientsList.length > 0 ? (
+              ingredientsList.map((ingredient, index) => {
+                const parts = ingredient.split(':');
+                const name = parts[0]?.trim() || ingredient;
+                const amount = parts[1]?.trim() || '';
+                return (
+                  <View key={`ingredient-${index}`} style={styles.ingredientRow}>
+                    <TextInput
+                      style={styles.ingredientInput}
+                      value={`${name}${amount ? `: ${amount}` : ''}`}
+                      placeholderTextColor="#999"
+                      editable={false}
+                    />
+                  </View>
+                );
+              })
+            ) : (
+              <ThemedText style={styles.emptyText}>No ingredients listed</ThemedText>
+            )}
           </View>
 
           {/* Steps */}
-          {stepsList.map((step, index) => (
-            <View key={index} style={styles.stepSection}>
-              <ThemedText style={styles.sectionLabel}>{index + 1}. step</ThemedText>
-              <View style={styles.stepImagePlaceholder}>
-                <ThemedText style={styles.placeholderIcon}>🏔️☀️</ThemedText>
-              </View>
-              {index === 0 && (
-                <View style={styles.cookDetailsSection}>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="Cook details"
-                    placeholderTextColor="#999"
-                    multiline
-                    value={cookDetails}
-                    onChangeText={setCookDetails}
-                  />
+          {stepsList.length > 0 ? (
+            stepsList.map((step, index) => (
+              <View key={`step-${index}`} style={styles.stepSection}>
+                <ThemedText style={styles.sectionLabel}>{index + 1}. step</ThemedText>
+                <View style={styles.stepImagePlaceholder}>
+                  <ThemedText style={styles.placeholderIcon}>🏔️☀️</ThemedText>
                 </View>
-              )}
+                {index === 0 && (
+                  <View style={styles.cookDetailsSection}>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="Cook details"
+                      placeholderTextColor="#999"
+                      multiline
+                      value={cookDetails}
+                      onChangeText={setCookDetails}
+                    />
+                  </View>
+                )}
+              </View>
+            ))
+          ) : (
+            <View style={styles.stepSection}>
+              <ThemedText style={styles.emptyText}>No steps listed</ThemedText>
             </View>
-          ))}
+          )}
 
           {/* Updated date */}
           <View style={styles.dateRow}>
@@ -222,9 +234,10 @@ export default function RecipeDetailScreen() {
             <TouchableOpacity 
               style={styles.navButton}
               onPress={() => {
-                const prevId = parseInt(id || '1') - 1;
+                const currentId = parseInt(id as string || '1', 10);
+                const prevId = currentId - 1;
                 if (prevId > 0) {
-                  router.replace(`/recipe/${prevId}`);
+                  router.push(`/recipeDetail/${prevId}` as any);
                 }
               }}
             >
@@ -233,8 +246,9 @@ export default function RecipeDetailScreen() {
             <TouchableOpacity 
               style={styles.navButton}
               onPress={() => {
-                const nextId = parseInt(id || '1') + 1;
-                router.replace(`/recipe/${nextId}`);
+                const currentId = parseInt(id as string || '1', 10);
+                const nextId = currentId + 1;
+                router.push(`/recipeDetail/${nextId}` as any);
               }}
             >
               <ThemedText style={styles.navButtonText}>Next recipe</ThemedText>
@@ -256,19 +270,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-  },
-  headerSection: {
-    backgroundColor: '#2C5F5F',
-    paddingTop: 60,
-    paddingBottom: 16,
-    paddingHorizontal: 16,
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#fff',
   },
   scrollView: {
     flex: 1,
@@ -445,5 +446,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
   },
 });

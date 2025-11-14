@@ -176,7 +176,7 @@ export default function FeedScreen() {
               <TouchableOpacity
                 key={recipe.id}
                 style={styles.recipeCard}
-                onPress={() => router.push(`/recipe/${recipe.id}`)}
+                onPress={() => router.push(`/recipeDetail/${recipe.id}`)}
                 activeOpacity={0.7}
               >
                 {recipe.image_url ? (
