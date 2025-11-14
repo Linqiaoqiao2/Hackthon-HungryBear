@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, ScrollView, TouchableOpacity, View, Image, Dimensions, Switch } from 'react-native';
+import { StyleSheet, ScrollView, TouchableOpacity, View, Image, Dimensions } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { useRouter } from 'expo-router';
 import { apiService, Recipe, User } from '@/services/api';
@@ -96,7 +96,6 @@ export default function FeedScreen() {
   const [recipes, setRecipes] = useState<Recipe[]>(mockRecipes);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [toggleStates, setToggleStates] = useState<{ [key: number]: boolean }>({});
   const router = useRouter();
 
   useEffect(() => {
@@ -205,16 +204,15 @@ export default function FeedScreen() {
                     </ThemedText>
                   </View>
                   <View style={styles.divider} />
-                  <View style={styles.recipeToggleRow}>
-                    <ThemedText style={styles.toggleLabel} lightColor="#000" darkColor="#000">
+                  <View style={styles.recipeAuthorRow}>
+                    <View style={styles.authorAvatar}>
+                      <ThemedText style={styles.avatarText}>
+                        {recipe.author.username.charAt(0).toUpperCase()}
+                      </ThemedText>
+                    </View>
+                    <ThemedText style={styles.authorName} lightColor="#000" darkColor="#000">
                       {recipe.author.username}
                     </ThemedText>
-                    <Switch
-                      value={toggleStates[recipe.id] || false}
-                      onValueChange={(value) => setToggleStates({ ...toggleStates, [recipe.id]: value })}
-                      trackColor={{ false: '#E0E0E0', true: '#4CAF50' }}
-                      thumbColor={toggleStates[recipe.id] ? '#fff' : '#f4f3f4'}
-                    />
                   </View>
                 </View>
               </TouchableOpacity>
@@ -364,12 +362,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#E0E0E0',
     marginBottom: 8,
   },
-  recipeToggleRow: {
+  recipeAuthorRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  toggleLabel: {
+  authorAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#E0E0E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  avatarText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  authorName: {
     fontSize: 14,
     fontWeight: '500',
     color: '#000',
@@ -397,3 +408,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
