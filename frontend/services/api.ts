@@ -16,6 +16,7 @@ export interface Recipe {
   title: string;
   description: string;
   ingredients: string;
+  prepTime: string;
   instructions: string;
   image_url?: string;
   visibility: 'private' | 'friends' | 'friends_network' | 'public';

@@ -7,6 +7,7 @@ import { apiService } from '@/services/api';
 export default function PublishRecipeScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [prepTime, setPrepTime] = useState('');
   const [ingredients, setIngredients] = useState('');
   const [instructions, setInstructions] = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,6 +23,7 @@ export default function PublishRecipeScreen() {
       await apiService.createRecipe({
         title,
         description,
+        prepTime,
         ingredients,
         instructions,
         visibility: 'friends',
@@ -33,6 +35,7 @@ export default function PublishRecipeScreen() {
             // Clear form after successful creation
             setTitle('');
             setDescription('');
+            setPrepTime('');
             setIngredients('');
             setInstructions('');
           }
@@ -49,25 +52,34 @@ export default function PublishRecipeScreen() {
   return (
     <ThemedView style={styles.container}>
       <ThemedView style={styles.header}>
-        <ThemedText type="title">Publish Recipe</ThemedText>
+        <ThemedText type="title">Add a new recipe</ThemedText>
         <TouchableOpacity onPress={handleCreate} disabled={loading}>
-          <ThemedText style={styles.saveButton}>{loading ? 'Publishing...' : 'Publish'}</ThemedText>
+          <ThemedText style={styles.saveButton}>{loading ? 'Adding Recipe...' : 'Add Recipe'}</ThemedText>
         </TouchableOpacity>
       </ThemedView>
       <ScrollView style={styles.scrollView}>
-        <ThemedText style={styles.label}>Title *</ThemedText>
+        <ThemedText style={styles.label}>Name of recipe *</ThemedText>
         <TextInput
           style={styles.input}
           value={title}
           onChangeText={setTitle}
-          placeholder="Recipe title"
+          placeholder="Enter name"
         />
-        <ThemedText style={styles.label}>Description</ThemedText>
+        <ThemedText style={styles.label}>Tags/category</ThemedText>
         <TextInput
           style={[styles.input, styles.textArea]}
           value={description}
           onChangeText={setDescription}
-          placeholder="Recipe description"
+          placeholder="Choose tags"
+          multiline
+        />
+        {/* I had to add a field, so I just copied the code for "Tags/category" and hope it'll work */}
+        <ThemedText style={styles.label}>Preparation time</ThemedText>
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          value={prepTime}
+          onChangeText={setPrepTime}
+          placeholder="Enter time"
           multiline
         />
         <ThemedText style={styles.label}>Ingredients *</ThemedText>
@@ -75,10 +87,11 @@ export default function PublishRecipeScreen() {
           style={[styles.input, styles.textArea]}
           value={ingredients}
           onChangeText={setIngredients}
-          placeholder="List ingredients (one per line)"
+          placeholder="Choose tags"
           multiline
         />
-        <ThemedText style={styles.label}>Instructions *</ThemedText>
+        {/* there is no placeholder on Figma - how can I make it look like in Figma? */}
+        <ThemedText style={styles.label}>Preparation *</ThemedText>
         <TextInput
           style={[styles.input, styles.textArea]}
           value={instructions}
