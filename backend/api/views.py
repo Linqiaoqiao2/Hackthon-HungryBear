@@ -19,13 +19,17 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 class RecipeViewSet(viewsets.ModelViewSet):
     """ViewSet for managing recipes with visibility logic"""
     serializer_class = RecipeSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]  # Temporarily allow unauthenticated access for development
 
     def get_queryset(self):
         user = self.request.user
         queryset = Recipe.objects.all()
 
         # Filter by visibility
+        # If user is not authenticated, only show public recipes
+        if not user.is_authenticated:
+            return queryset.filter(visibility='public')
+        
         visibility_filter = Q(visibility='public') | Q(author=user)
         
         # Friends visibility
