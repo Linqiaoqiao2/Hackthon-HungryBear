@@ -108,6 +108,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 60,
+    backgroundColor: '#81B29A',
   },
   header: {
     flexDirection: 'row',
@@ -116,21 +117,26 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
+    backgroundColor: '#81B29A',
   },
   saveButton: {
     color: '#007AFF',
     fontWeight: '600',
+    backgroundColor: '#fff',
   },
+  /* background of body */
   scrollView: {
     flex: 1,
     padding: 16,
+    backgroundColor: '#fff',
   },
+  /* Titles of Textboxes */
   label: {
     fontSize: 16,
     fontWeight: '600',
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: 16,  
   },
+  /* Textbox Name of Recipe */
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
@@ -139,9 +145,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     minHeight: 44,
   },
+  /* other textboxes */
   textArea: {
     minHeight: 100,
     textAlignVertical: 'top',
+    backgroundColor: '#fff',
   },
 });
 
