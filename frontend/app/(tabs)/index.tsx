@@ -5,7 +5,15 @@ import { useRouter } from 'expo-router';
 import { apiService, Recipe } from '@/services/api';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 48) / 2; // 2 columns with padding
+const CARD_WIDTH = (width - 48) / 2; // 2 columns with padding (16px padding on each side + 16px gap)
+
+// Helper function to calculate card width more accurately
+const getCardWidth = () => {
+  const screenWidth = Dimensions.get('window').width;
+  const padding = 16 * 2; // left and right padding
+  const gap = 16; // gap between cards
+  return (screenWidth - padding - gap) / 2;
+};
 
 export default function FeedScreen() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -20,11 +28,15 @@ export default function FeedScreen() {
   const loadRecipes = async () => {
     try {
       setError(null);
+      setLoading(true);
       const data = await apiService.getRecipes();
+      console.log('Loaded recipes:', data);
+      console.log('Number of recipes:', data.length);
       setRecipes(data);
     } catch (error: any) {
       console.error('Error loading recipes:', error);
       setError(error.message || 'Failed to load recipes');
+      setRecipes([]); // Ensure recipes is empty on error
     } finally {
       setLoading(false);
     }
@@ -80,6 +92,7 @@ export default function FeedScreen() {
                 key={recipe.id}
                 style={styles.recipeCard}
                 onPress={() => router.push(`/recipe/${recipe.id}`)}
+                activeOpacity={0.7}
               >
                 {recipe.image_url ? (
                   <Image 
@@ -88,15 +101,17 @@ export default function FeedScreen() {
                     resizeMode="cover"
                   />
                 ) : (
-                  <View style={styles.recipeImagePlaceholder} />
+                  <View style={styles.recipeImagePlaceholder}>
+                    <ThemedText style={styles.placeholderText}>No Image</ThemedText>
+                  </View>
                 )}
                 <View style={styles.recipeCardContent}>
-                  <ThemedText style={styles.recipeTitle} numberOfLines={1}>
+                  <ThemedText style={styles.recipeTitle} numberOfLines={1} lightColor="#000" darkColor="#000">
                     {recipe.title}
                   </ThemedText>
                   <View style={styles.recipeAuthor}>
                     <View style={styles.authorAvatar} />
-                    <ThemedText style={[styles.authorName, { marginLeft: 6 }]} numberOfLines={1}>
+                    <ThemedText style={[styles.authorName, { marginLeft: 6 }]} numberOfLines={1} lightColor="#666" darkColor="#666">
                       {recipe.author.username}
                     </ThemedText>
                   </View>
@@ -177,9 +192,11 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginTop: 12,
+    width: '100%',
   },
   recipeCard: {
     width: CARD_WIDTH,
+    maxWidth: CARD_WIDTH,
     backgroundColor: '#fff',
     borderRadius: 12,
     marginBottom: 16,
@@ -189,6 +206,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
   },
   recipeImage: {
     width: '100%',
@@ -199,6 +218,12 @@ const styles = StyleSheet.create({
     width: '100%',
     height: CARD_WIDTH * 0.75,
     backgroundColor: '#E0E0E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderText: {
+    fontSize: 12,
+    color: '#999',
   },
   recipeCardContent: {
     padding: 12,
@@ -208,6 +233,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000',
     marginBottom: 8,
+    minHeight: 20,
   },
   recipeAuthor: {
     flexDirection: 'row',
@@ -227,8 +253,9 @@ const styles = StyleSheet.create({
   errorContainer: {
     padding: 16,
     margin: 16,
+    marginTop: 20,
     borderRadius: 8,
-    backgroundColor: '#ffebee',
+    backgroundColor: '#FFEBEB',
   },
   errorText: {
     color: '#c62828',
