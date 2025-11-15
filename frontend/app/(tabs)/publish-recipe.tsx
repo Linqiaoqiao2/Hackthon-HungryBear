@@ -86,7 +86,7 @@ export default function PublishRecipeScreen() {
           placeholder="Choose Ingredients"
           multiline
         />
-        <View style={styles.button}>
+        <View style={styles.ingredientButton}>
           <TouchableOpacity onPress={handleCreate} style={styles.button}>
             <ThemedText style={styles.ingredientButton}>{'Add ingredient'}</ThemedText>
           </TouchableOpacity>
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 10,
     marginHorizontal: 5,
-    borderRadius: 8,
+    borderRadius: 6,
     textAlign: 'center',
   },
   ingredientButton: {
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     paddingVertical: 2,
     backgroundColor: '#A20021',
-    textAlign: 'right',
+    textAlign: 'center',
     borderRadius: 6, //rounded corners
   },
   saveButton: {
