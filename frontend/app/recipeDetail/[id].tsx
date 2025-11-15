@@ -1,16 +1,15 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { 
-  StyleSheet, 
-  ScrollView, 
-  View, 
-  Image, 
-  TextInput, 
-  TouchableOpacity,
-} from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { apiService, Recipe } from '@/services/api';
 import { mockRecipes } from '@/services/mockData';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  Image,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -74,7 +73,7 @@ export default function RecipeDetailScreen() {
       <View style={styles.outerContainer}>
         <View style={styles.loadingContainer}>
           <ThemedText style={styles.errorText}>{error}</ThemedText>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => {
               if (id) {
                 const recipeId = parseInt(id, 10);
@@ -82,7 +81,7 @@ export default function RecipeDetailScreen() {
                   loadRecipe(recipeId);
                 }
               }
-            }} 
+            }}
             style={styles.retryButton}
           >
             <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
@@ -102,8 +101,13 @@ export default function RecipeDetailScreen() {
     );
   }
 
-  // Parse ingredients into array
-  const ingredientsList = recipe.ingredients?.split('\n').filter(item => item.trim()) || [];
+  // Parse ingredients into array - support both newline and comma separators
+  const ingredientsList = recipe.ingredients
+    ? recipe.ingredients
+      .split(/\n|,/)
+      .map(item => item.trim())
+      .filter(item => item.length > 0)
+    : [];
 
   // Parse instructions into steps
   const stepsList = recipe.instructions?.split('\n').filter(step => step.trim()) || [];
@@ -120,9 +124,28 @@ export default function RecipeDetailScreen() {
     }
   };
 
+  // Generate step images based on step index and recipe
+  const getStepImageUrl = (stepIndex: number, totalSteps: number) => {
+    // Use Unsplash curated food images for variety
+    // Different image IDs for different steps to show variety
+    const imageIds = [
+      '1513104890138-7c749659a591', // cooking prep
+      '1555939594-58d7cb561ad1',   // ingredients
+      '1484723091739-30a097e8f929', // mixing
+      '1568901346375-23c9450c58cd', // cooking
+      '1541519227354-08fa5d50c44d', // plating
+      '1579584425555-c3ce17fd4351', // garnishing
+      '1512621776951-a57141f2eefd', // final dish
+      '1504674900247-0877df9cc836', // baking
+    ];
+
+    const imageId = imageIds[stepIndex % imageIds.length] || imageIds[0];
+    return `https://images.unsplash.com/photo-${imageId}?w=400&h=300&fit=crop&auto=format`;
+  };
+
   return (
     <View style={styles.outerContainer}>
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -130,8 +153,8 @@ export default function RecipeDetailScreen() {
         {/* Main Recipe Image */}
         <View style={styles.imageContainer}>
           {recipe.image_url ? (
-            <Image 
-              source={{ uri: recipe.image_url }} 
+            <Image
+              source={{ uri: recipe.image_url }}
               style={styles.mainImage}
               resizeMode="cover"
             />
@@ -144,53 +167,47 @@ export default function RecipeDetailScreen() {
 
         {/* Content Section - Yellow-Orange Background */}
         <View style={styles.contentSection}>
-          {/* Name of recipe with author and Cooking mode button */}
+          {/* Name of recipe with author */}
           <View style={styles.recipeHeader}>
             <View style={styles.recipeTitleRow}>
-              <ThemedText style={styles.sectionLabel}>Name of recipe</ThemedText>
               <ThemedText style={styles.recipeTitle}>{recipe.title}</ThemedText>
               <View style={styles.authorRow}>
                 <View style={styles.authorAvatar} />
                 <ThemedText style={styles.authorName}>{recipe.author?.username || 'Unknown'}</ThemedText>
               </View>
             </View>
-            <TouchableOpacity style={styles.cookingModeButton}>
-              <ThemedText style={styles.cookingModeText}>Cooking mode</ThemedText>
-            </TouchableOpacity>
           </View>
 
           {/* Story behind this Dish */}
           <View style={styles.inputSection}>
             <ThemedText style={styles.sectionLabel}>Story behind this Dish</ThemedText>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Story behind this Dish"
-              placeholderTextColor="#999"
-              multiline
-              value={story}
-              onChangeText={setStory}
-            />
+            <View style={styles.textDisplay}>
+              <ThemedText style={styles.textDisplayContent}>{story}</ThemedText>
+            </View>
           </View>
 
           {/* Ingredients */}
           <View style={styles.ingredientsSection}>
             <ThemedText style={styles.sectionLabel}>Ingredients</ThemedText>
             {ingredientsList.length > 0 ? (
-              ingredientsList.map((ingredient, index) => {
-                const parts = ingredient.split(':');
-                const name = parts[0]?.trim() || ingredient;
-                const amount = parts[1]?.trim() || '';
-                return (
-                  <View key={`ingredient-${index}`} style={styles.ingredientRow}>
-                    <TextInput
-                      style={styles.ingredientInput}
-                      value={`${name}${amount ? `: ${amount}` : ''}`}
-                      placeholderTextColor="#999"
-                      editable={false}
-                    />
-                  </View>
-                );
-              })
+              <View style={styles.ingredientsContainer}>
+                {ingredientsList.map((ingredient, index) => {
+                  const parts = ingredient.split(':');
+                  const name = parts[0]?.trim() || ingredient;
+                  const amount = parts[1]?.trim() || '';
+                  const isLast = index === ingredientsList.length - 1;
+                  return (
+                    <View key={`ingredient-${index}`}>
+                      <View style={styles.ingredientRow}>
+                        <ThemedText style={styles.ingredientText}>
+                          {`${name}${amount ? `: ${amount}` : ''}`}
+                        </ThemedText>
+                      </View>
+                      {!isLast && <View style={styles.ingredientSeparator} />}
+                    </View>
+                  );
+                })}
+              </View>
             ) : (
               <ThemedText style={styles.emptyText}>No ingredients listed</ThemedText>
             )}
@@ -198,26 +215,28 @@ export default function RecipeDetailScreen() {
 
           {/* Steps */}
           {stepsList.length > 0 ? (
-            stepsList.map((step, index) => (
-              <View key={`step-${index}`} style={styles.stepSection}>
-                <ThemedText style={styles.sectionLabel}>{index + 1}. step</ThemedText>
-                <View style={styles.stepImagePlaceholder}>
-                  <ThemedText style={styles.placeholderIcon}>🏔️☀️</ThemedText>
-                </View>
-                {index === 0 && (
-                  <View style={styles.cookDetailsSection}>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="Cook details"
-                      placeholderTextColor="#999"
-                      multiline
-                      value={cookDetails}
-                      onChangeText={setCookDetails}
+            stepsList.map((step, index) => {
+              const stepImageUrl = getStepImageUrl(index, stepsList.length);
+              return (
+                <View key={`step-${index}`} style={styles.stepSection}>
+                  <ThemedText style={styles.sectionLabel}>{index + 1}. step</ThemedText>
+                  <View style={styles.stepImageContainer}>
+                    <Image
+                      source={{ uri: stepImageUrl }}
+                      style={styles.stepImage}
+                      resizeMode="cover"
                     />
                   </View>
-                )}
-              </View>
-            ))
+                  {index === 0 && (
+                    <View style={styles.cookDetailsSection}>
+                      <View style={styles.textDisplay}>
+                        <ThemedText style={styles.textDisplayContent}>{cookDetails}</ThemedText>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              );
+            })
           ) : (
             <View style={styles.stepSection}>
               <ThemedText style={styles.emptyText}>No steps listed</ThemedText>
@@ -240,14 +259,14 @@ export default function RecipeDetailScreen() {
                 <ThemedText style={styles.commentUserName}>User name</ThemedText>
               </View>
               <ThemedText style={styles.commentText}>
-                wrote comment wrote comment wrote comment wrote comment wrote comment wrote comment
+                Looks very delicious!
               </ThemedText>
             </View>
           </View>
 
           {/* Navigation Buttons */}
           <View style={styles.navigationButtons}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.navButton}
               onPress={() => {
                 const currentId = parseInt(id as string || '1', 10);
@@ -259,7 +278,7 @@ export default function RecipeDetailScreen() {
             >
               <ThemedText style={styles.navButtonText}>Last recipe</ThemedText>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.navButton}
               onPress={() => {
                 const currentId = parseInt(id as string || '1', 10);
@@ -333,7 +352,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#B8860B', // Dark orange
+    color: '#000', // Black for better contrast
     marginBottom: 8,
   },
   authorRow: {
@@ -353,18 +372,6 @@ const styles = StyleSheet.create({
     color: '#000',
     fontWeight: '500',
   },
-  cookingModeButton: {
-    backgroundColor: '#2C5F5F',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
-  },
-  cookingModeText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
   inputSection: {
     marginBottom: 24,
   },
@@ -377,21 +384,56 @@ const styles = StyleSheet.create({
     minHeight: 44,
     textAlignVertical: 'top',
   },
-  ingredientsSection: {
-    marginBottom: 24,
-  },
-  ingredientRow: {
-    marginBottom: 8,
-  },
-  ingredientInput: {
+  textDisplay: {
     backgroundColor: '#fff',
     borderRadius: 8,
     padding: 12,
+    minHeight: 44,
+  },
+  textDisplayContent: {
     fontSize: 16,
     color: '#000',
+    lineHeight: 22,
+  },
+  ingredientsSection: {
+    width: '100%',
+    marginBottom: 24,
+  },
+  ingredientsContainer: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 12,
+  },
+  ingredientRow: {
+    width: '100%',
+    paddingVertical: 8,
+  },
+  ingredientSeparator: {
+    width: '100%',
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    marginVertical: 0,
+  },
+  ingredientText: {
+    fontSize: 16,
+    color: '#000',
+    lineHeight: 22,
   },
   stepSection: {
     marginBottom: 24,
+  },
+  stepImageContainer: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 12,
+    backgroundColor: '#E0E0E0',
+  },
+  stepImage: {
+    width: '100%',
+    height: '100%',
   },
   stepImagePlaceholder: {
     width: '100%',
