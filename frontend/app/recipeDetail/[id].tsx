@@ -10,46 +10,39 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { apiService, Recipe } from '@/services/api';
+import { mockRecipes } from '@/services/mockData';
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [story, setStory] = useState('');
   const [cookDetails, setCookDetails] = useState('');
 
   const loadRecipe = useCallback(async (recipeId: number) => {
     try {
-      // For now, use mock data. Uncomment to load from API:
-      // const data = await apiService.getRecipe(recipeId);
-      // setRecipe(data);
-      
-      // Mock data for testing
-      const mockRecipe: Recipe = {
-        id: recipeId,
-        title: 'Pizza',
-        description: 'Delicious homemade pizza',
-        ingredients: 'Salt: 1 spoon\nFlour: 2 cups\nTomato sauce: 1 cup\nCheese: 200g',
-        prepTime: '30 min',
-        instructions: '1. Mix flour and salt\n2. Add water and knead\n3. Add toppings\n4. Bake at 200°C',
-        image_url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=300&fit=crop',
-        visibility: 'public',
-        created_at: '2025-11-14T10:00:00Z',
-        updated_at: '2025-11-14T10:00:00Z',
-        author: {
-          id: 1,
-          username: 'Mengmeng',
-          email: 'mengmeng@example.com',
-          first_name: 'Mengmeng',
-          last_name: 'User',
-        },
-      };
-      setRecipe(mockRecipe);
+      setLoading(true);
+      const data = await apiService.getRecipe(recipeId);
+      setRecipe(data);
+      // Initialize story and cook details if needed (these might come from the API in the future)
       setStory('This is a delicious recipe that has been passed down through generations...');
       setCookDetails('Cook for 15 minutes at 200°C until golden brown.');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading recipe:', error);
+      setError(error.message || 'Failed to load recipe');
+      // Fallback to mock data in development mode when API fails
+      if (__DEV__) {
+        const mockRecipe = mockRecipes.find(r => r.id === recipeId);
+        if (mockRecipe) {
+          console.log('Using mock recipe as fallback');
+          setRecipe(mockRecipe);
+          setStory('This is a delicious recipe that has been passed down through generations...');
+          setCookDetails('Cook for 15 minutes at 200°C until golden brown.');
+          setError(null);
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -71,6 +64,29 @@ export default function RecipeDetailScreen() {
       <View style={styles.outerContainer}>
         <View style={styles.loadingContainer}>
           <ThemedText>Loading...</ThemedText>
+        </View>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.outerContainer}>
+        <View style={styles.loadingContainer}>
+          <ThemedText style={styles.errorText}>{error}</ThemedText>
+          <TouchableOpacity 
+            onPress={() => {
+              if (id) {
+                const recipeId = parseInt(id, 10);
+                if (!isNaN(recipeId)) {
+                  loadRecipe(recipeId);
+                }
+              }
+            }} 
+            style={styles.retryButton}
+          >
+            <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -451,5 +467,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     fontStyle: 'italic',
+  },
+  errorText: {
+    color: '#c62828',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignSelf: 'center',
+    marginTop: 12,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontWeight: '600',
   },
 });

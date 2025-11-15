@@ -1,3 +1,4 @@
+import axios, { AxiosError, AxiosInstance } from 'axios';
 import { getApiBaseUrl } from './config';
 
 const API_BASE_URL = getApiBaseUrl();
@@ -16,7 +17,7 @@ export interface Recipe {
   title: string;
   description: string;
   ingredients: string;
-  prepTime: string;
+  prepTime?: string;
   instructions: string;
   image_url?: string;
   visibility: 'private' | 'friends' | 'friends_network' | 'public';
@@ -44,114 +45,110 @@ export interface Friendship {
 }
 
 class ApiService {
-  private baseUrl: string;
+  private axiosInstance: AxiosInstance;
 
   constructor(baseUrl: string = API_BASE_URL) {
-    this.baseUrl = baseUrl;
+    this.axiosInstance = axios.create({
+      baseURL: baseUrl,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      timeout: 10000, // 10 seconds timeout
+    });
+
+    // Add response interceptor for error handling
+    this.axiosInstance.interceptors.response.use(
+      (response) => response,
+      (error: AxiosError) => {
+        if (error.code === 'ECONNABORTED') {
+          throw new Error('Request timeout. Please check your connection.');
+        }
+        if (error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {
+          throw new Error(
+            `Cannot connect to backend server at ${baseUrl}. ` +
+            `Make sure the Django server is running (python manage.py runserver).`
+          );
+        }
+        if (error.response) {
+          const errorMessage = error.response.data
+            ? typeof error.response.data === 'string'
+              ? error.response.data
+              : JSON.stringify(error.response.data)
+            : error.response.statusText;
+          throw new Error(`API Error (${error.response.status}): ${errorMessage}`);
+        }
+        throw error;
+      }
+    );
   }
 
   private async request<T>(
+    method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE',
     endpoint: string,
-    options: RequestInit = {}
+    data?: any
   ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
-    
     try {
-      const response = await fetch(url, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
+      const response = await this.axiosInstance.request<T>({
+        method,
+        url: endpoint,
+        data,
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API Error (${response.status}): ${errorText || response.statusText}`);
-      }
-
-      // Handle empty responses
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        return response.json();
-      }
-      return {} as T;
+      return response.data;
     } catch (error: any) {
-      if (error.message.includes('Network request failed') || error.message.includes('Failed to fetch')) {
-        throw new Error(
-          `Cannot connect to backend server at ${this.baseUrl}. ` +
-          `Make sure the Django server is running (python manage.py runserver). ` +
-          `If using a physical device, update the API_BASE_URL with your computer's IP address.`
-        );
-      }
       throw error;
     }
   }
 
   // Recipe endpoints
   async getRecipes(): Promise<Recipe[]> {
-    const response = await this.request<{ results: Recipe[] } | Recipe[]>('/recipes/');
+    const response = await this.request<{ results: Recipe[] } | Recipe[]>('GET', 'recipes/');
     return Array.isArray(response) ? response : (response.results || []);
   }
 
   async getRecipe(id: number): Promise<Recipe> {
-    return this.request<Recipe>(`/recipes/${id}/`);
+    return this.request<Recipe>('GET', `recipes/${id}/`);
   }
 
   async createRecipe(recipe: Partial<Recipe>): Promise<Recipe> {
-    return this.request<Recipe>('/recipes/', {
-      method: 'POST',
-      body: JSON.stringify(recipe),
-    });
+    return this.request<Recipe>('POST', 'recipes/', recipe);
   }
 
   async updateRecipe(id: number, recipe: Partial<Recipe>): Promise<Recipe> {
-    return this.request<Recipe>(`/recipes/${id}/`, {
-      method: 'PATCH',
-      body: JSON.stringify(recipe),
-    });
+    return this.request<Recipe>('PATCH', `recipes/${id}/`, recipe);
   }
 
   async deleteRecipe(id: number): Promise<void> {
-    await this.request(`/recipes/${id}/`, {
-      method: 'DELETE',
-    });
+    await this.request<void>('DELETE', `recipes/${id}/`);
   }
 
   // Food Status endpoints
   async getFoodStatuses(): Promise<FoodStatus[]> {
-    const response = await this.request<{ results: FoodStatus[] } | FoodStatus[]>('/food-statuses/');
+    const response = await this.request<{ results: FoodStatus[] } | FoodStatus[]>('GET', 'food-statuses/');
     return Array.isArray(response) ? response : (response.results || []);
   }
 
   async createFoodStatus(status: Partial<FoodStatus>): Promise<FoodStatus> {
-    return this.request<FoodStatus>('/food-statuses/', {
-      method: 'POST',
-      body: JSON.stringify(status),
-    });
+    return this.request<FoodStatus>('POST', 'food-statuses/', status);
   }
 
   // Friendship endpoints
   async getFriendships(): Promise<Friendship[]> {
-    const response = await this.request<{ results: Friendship[] } | Friendship[]>('/friendships/');
+    const response = await this.request<{ results: Friendship[] } | Friendship[]>('GET', 'friendships/');
     return Array.isArray(response) ? response : (response.results || []);
   }
 
   async createFriendship(addresseeId: number): Promise<Friendship> {
-    return this.request<Friendship>('/friendships/', {
-      method: 'POST',
-      body: JSON.stringify({ addressee: addresseeId }),
-    });
+    return this.request<Friendship>('POST', 'friendships/', { addressee: addresseeId });
   }
 
   // User endpoints
   async getUsers(): Promise<User[]> {
-    const response = await this.request<{ results: User[] } | User[]>('/users/');
+    const response = await this.request<{ results: User[] } | User[]>('GET', 'users/');
     return Array.isArray(response) ? response : (response.results || []);
   }
 
   async getUser(id: number): Promise<User> {
-    return this.request<User>(`/users/${id}/`);
+    return this.request<User>('GET', `users/${id}/`);
   }
 }
 

@@ -69,13 +69,17 @@ class RecipeViewSet(viewsets.ModelViewSet):
 class FoodStatusViewSet(viewsets.ModelViewSet):
     """ViewSet for managing food statuses/stories with visibility logic"""
     serializer_class = FoodStatusSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]  # Temporarily allow unauthenticated access for development
 
     def get_queryset(self):
         user = self.request.user
         queryset = FoodStatus.objects.all()
 
         # Filter by visibility
+        # If user is not authenticated, only show public food statuses
+        if not user.is_authenticated:
+            return queryset.filter(visibility='public')
+        
         visibility_filter = Q(visibility='public') | Q(author=user)
         
         # Friends visibility

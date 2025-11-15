@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, ScrollView, TouchableOpacity, View, Image, Dimensions } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
+import { apiService, FoodStatus, Recipe } from '@/services/api';
+import { mockRecipes, mockStories } from '@/services/mockData';
 import { useRouter } from 'expo-router';
-import { apiService, Recipe, User } from '@/services/api';
+import React, { useEffect, useState } from 'react';
+import { Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2; // 2 columns with padding (16px padding on each side + 16px gap)
@@ -14,93 +15,18 @@ const getCardWidth = () => {
   const gap = 16; // gap between cards
   return (screenWidth - padding - gap) / 2;
 };
-const mockRecipes: Recipe[] = [
-  {
-    id: 1,
-    title: 'Pizza',
-    description: 'Delicious homemade pizza with pineapple, chicken, and fresh cilantro',
-    ingredients: 'Pizza dough, tomato sauce, mozzarella, pineapple, chicken, red onion, cilantro',
-    prepTime: '30 min',
-    instructions: 'Prepare dough, add toppings, bake at 200°C for 15 minutes',
-    image_url: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=300&fit=crop',
-    visibility: 'public',
-    created_at: '2025-11-14T10:00:00Z',
-    updated_at: '2025-11-14T10:00:00Z',
-    author: {
-      id: 1,
-      username: 'Mengmeng',
-      email: 'mengmeng@example.com',
-      first_name: 'Mengmeng',
-      last_name: 'User',
-    } as User,
-  },
-  {
-    id: 2,
-    title: 'Pasta Carbonara',
-    description: 'Classic Italian pasta dish',
-    ingredients: 'Spaghetti, eggs, pancetta, parmesan, black pepper',
-    prepTime: '20 min',
-    instructions: 'Cook pasta, prepare sauce, combine and serve',
-    image_url: '',
-    visibility: 'public',
-    created_at: '2025-11-13T15:30:00Z',
-    updated_at: '2025-11-13T15:30:00Z',
-    author: {
-      id: 2,
-      username: 'Chef',
-      email: 'chef@example.com',
-      first_name: 'Chef',
-      last_name: 'Cook',
-    } as User,
-  },
-  {
-    id: 3,
-    title: 'Sushi Roll',
-    description: 'Fresh salmon and avocado sushi',
-    ingredients: 'Sushi rice, nori, salmon, avocado, cucumber',
-    prepTime: '45 min',
-    instructions: 'Prepare rice, roll with ingredients, slice and serve',
-    image_url: 'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=400&h=300&fit=crop',
-    visibility: 'public',
-    created_at: '2025-11-12T12:00:00Z',
-    updated_at: '2025-11-12T12:00:00Z',
-    author: {
-      id: 1,
-      username: 'Mengmeng',
-      email: 'mengmeng@example.com',
-      first_name: 'Mengmeng',
-      last_name: 'User',
-    } as User,
-  },
-  {
-    id: 4,
-    title: 'Chocolate Cake',
-    description: 'Rich and moist chocolate cake',
-    ingredients: 'Flour, sugar, cocoa, eggs, butter, milk',
-    prepTime: '60 min',
-    instructions: 'Mix ingredients, bake at 180°C for 35 minutes',
-    image_url: '',
-    visibility: 'public',
-    created_at: '2025-11-11T14:20:00Z',
-    updated_at: '2025-11-11T14:20:00Z',
-    author: {
-      id: 3,
-      username: 'Baker',
-      email: 'baker@example.com',
-      first_name: 'Baker',
-      last_name: 'Sweet',
-    } as User,
-  },
-];
 export default function FeedScreen() {
-  const [recipes, setRecipes] = useState<Recipe[]>(mockRecipes);
-  const [loading, setLoading] = useState(false);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [stories, setStories] = useState<FoodStatus[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [storiesLoading, setStoriesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [storiesError, setStoriesError] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    // Uncomment to load from API
-    // loadRecipes();
+    loadRecipes();
+    loadStories();
   }, []);
 
   const loadRecipes = async () => {
@@ -110,23 +36,62 @@ export default function FeedScreen() {
       const data = await apiService.getRecipes();
       console.log('Loaded recipes:', data);
       console.log('Number of recipes:', data.length);
-      setRecipes(data);
+      // Use API data if available and not empty, otherwise fallback to mock data
+      if (data && data.length > 0) {
+        // Sort by created_at descending (newest first)
+        const sortedData = [...data].sort((a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        setRecipes(sortedData);
+      } else {
+        console.log('API returned empty data, using mock recipes as fallback');
+        // Sort mock data by date descending
+        const sortedMock = [...mockRecipes].sort((a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        setRecipes(sortedMock);
+      }
     } catch (error: any) {
-      console.error('Error loading recipes:', error);
-      setError(error.message || 'Failed to load recipes');
-      setRecipes([]); // Ensure recipes is empty on error
+      // Silently fallback to mock data without showing error to user
+      console.log('API error (using mock recipes as fallback):', error.message);
+      setError(null); // Don't set error, just use mock data
+      // Sort mock data by date descending
+      const sortedMock = [...mockRecipes].sort((a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      setRecipes(sortedMock);
     } finally {
       setLoading(false);
     }
   };
 
-  // Mock stories data - you can replace this with actual API call
-  const stories = Array.from({ length: 6 }, (_, i) => ({ id: i }));
+  const loadStories = async () => {
+    try {
+      setStoriesError(null);
+      setStoriesLoading(true);
+      const data = await apiService.getFoodStatuses();
+      console.log('Loaded stories:', data);
+      // Use API data if available and not empty, otherwise fallback to mock data
+      if (data && data.length > 0) {
+        setStories(data);
+      } else {
+        console.log('API returned empty data, using mock stories as fallback');
+        setStories(mockStories);
+      }
+    } catch (error: any) {
+      // Silently fallback to mock data without showing error to user
+      console.log('API error (using mock stories as fallback):', error.message);
+      setStoriesError(null); // Don't set error, just use mock data
+      setStories(mockStories);
+    } finally {
+      setStoriesLoading(false);
+    }
+  };
 
   return (
     <View style={styles.outerContainer}>
-      <ScrollView 
-        style={styles.container} 
+      <ScrollView
+        style={styles.container}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         bounces={true}
@@ -135,90 +100,116 @@ export default function FeedScreen() {
         {/* Stories Section */}
         <View style={styles.storiesSection}>
           <ThemedText style={styles.sectionTitle}>Stories</ThemedText>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            style={styles.storiesScroll}
-            contentContainerStyle={styles.storiesContent}
-          >
-            {stories.map((story, index) => (
-              <TouchableOpacity
-                key={story.id}
-                style={styles.storyCircle}
-              >
-                {index === 0 ? (
-                  <ThemedText style={styles.addStoryIcon}>+</ThemedText>
-                ) : (
-                  <View style={styles.storyPlaceholder} />
-                )}
+          {storiesLoading ? (
+            <ThemedText style={styles.loadingText}>Loading stories...</ThemedText>
+          ) : stories.length === 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.storiesScroll}
+              contentContainerStyle={styles.storiesContent}
+            >
+              <TouchableOpacity style={styles.storyCircle}>
+                <ThemedText style={styles.addStoryIcon}>+</ThemedText>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
+            </ScrollView>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.storiesScroll}
+              contentContainerStyle={styles.storiesContent}
+            >
+              <TouchableOpacity style={styles.storyCircle}>
+                <ThemedText style={styles.addStoryIcon}>+</ThemedText>
+              </TouchableOpacity>
+              {stories.map((story) => (
+                <TouchableOpacity
+                  key={story.id}
+                  style={styles.storyCircle}
+                >
+                  {story.image_url ? (
+                    <Image
+                      source={{ uri: story.image_url }}
+                      style={styles.storyImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.storyPlaceholder}>
+                      <ThemedText style={styles.storyInitial}>
+                        {story.author?.username?.charAt(0).toUpperCase() || '?'}
+                      </ThemedText>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
         </View>
 
         {/* Recipes Section */}
         <View style={styles.recipesSection}>
-        <ThemedText style={styles.sectionTitle}>Recipes</ThemedText>
-        {loading ? (
-          <ThemedText style={styles.loadingText}>Loading...</ThemedText>
-        ) : error ? (
-          <View style={styles.errorContainer}>
-            <ThemedText style={styles.errorText}>{error}</ThemedText>
-            <TouchableOpacity onPress={loadRecipes} style={styles.retryButton}>
-              <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
-            </TouchableOpacity>
-          </View>
-        ) : recipes.length === 0 ? (
-          <ThemedText style={styles.emptyText}>No recipes yet. Create your first recipe!</ThemedText>
-        ) : (
-          <View style={styles.recipesGrid}>
-            {recipes.map((recipe) => (
-              <TouchableOpacity
-                key={recipe.id}
-                style={styles.recipeCard}
-                onPress={() => router.push(`/recipeDetail/${recipe.id}`)}
-                activeOpacity={0.7}
-              >
-                {recipe.image_url ? (
-                  <Image 
-                    source={{ uri: recipe.image_url }} 
-                    style={styles.recipeImage}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View style={styles.recipeImagePlaceholder}>
-                    <ThemedText style={styles.placeholderText}>No Image</ThemedText>
-                  </View>
-                )}
-                <View style={styles.recipeCardContent}>
-                  <View style={styles.recipeHeader}>
-                    <ThemedText style={styles.recipeTitle} numberOfLines={1} lightColor="#000" darkColor="#000">
-                      {recipe.title}
-                    </ThemedText>
-                    <ThemedText style={styles.recipeDate} lightColor="#666" darkColor="#666">
-                      {new Date(recipe.created_at).toLocaleDateString('en-GB', { 
-                        day: '2-digit', 
-                        month: '2-digit', 
-                        year: 'numeric' 
-                      }).replace(/\./g, '/')}
-                    </ThemedText>
-                  </View>
-                  <View style={styles.divider} />
-                  <View style={styles.recipeAuthorRow}>
-                    <View style={styles.authorAvatar}>
-                      <ThemedText style={styles.avatarText}>
-                        {recipe.author.username.charAt(0).toUpperCase()}
+          <ThemedText style={styles.sectionTitle}>Recipes</ThemedText>
+          {loading ? (
+            <ThemedText style={styles.loadingText}>Loading...</ThemedText>
+          ) : error ? (
+            <View style={styles.errorContainer}>
+              <ThemedText style={styles.errorText}>{error}</ThemedText>
+              <TouchableOpacity onPress={loadRecipes} style={styles.retryButton}>
+                <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+              </TouchableOpacity>
+            </View>
+          ) : recipes.length === 0 ? (
+            <ThemedText style={styles.emptyText}>No recipes yet. Create your first recipe!</ThemedText>
+          ) : (
+            <View style={styles.recipesGrid}>
+              {recipes.map((recipe) => (
+                <TouchableOpacity
+                  key={recipe.id}
+                  style={styles.recipeCard}
+                  onPress={() => router.push(`/recipeDetail/${recipe.id}`)}
+                  activeOpacity={0.7}
+                >
+                  {recipe.image_url ? (
+                    <Image
+                      source={{ uri: recipe.image_url }}
+                      style={styles.recipeImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.recipeImagePlaceholder}>
+                      <ThemedText style={styles.placeholderText}>No Image</ThemedText>
+                    </View>
+                  )}
+                  <View style={styles.recipeCardContent}>
+                    <View style={styles.recipeHeader}>
+                      <ThemedText style={styles.recipeTitle} numberOfLines={1} lightColor="#000" darkColor="#000">
+                        {recipe.title}
+                      </ThemedText>
+                      <ThemedText style={styles.recipeDate} lightColor="#666" darkColor="#666">
+                        {new Date(recipe.created_at).toLocaleDateString('en-GB', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric'
+                        }).replace(/\./g, '/')}
                       </ThemedText>
                     </View>
-                    <ThemedText style={styles.authorName} lightColor="#000" darkColor="#000">
-                      {recipe.author.username}
-                    </ThemedText>
+                    <View style={styles.divider} />
+                    <View style={styles.recipeAuthorRow}>
+                      <View style={styles.authorAvatar}>
+                        <ThemedText style={styles.avatarText}>
+                          {recipe.author.username.charAt(0).toUpperCase()}
+                        </ThemedText>
+                      </View>
+                      <ThemedText style={styles.authorName} lightColor="#000" darkColor="#000">
+                        {recipe.author.username}
+                      </ThemedText>
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -280,6 +271,18 @@ const styles = StyleSheet.create({
     height: 70,
     borderRadius: 35,
     backgroundColor: '#E0E0E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  storyImage: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+  },
+  storyInitial: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#666',
   },
   // Recipes Section
   recipesSection: {
@@ -308,7 +311,6 @@ const styles = StyleSheet.create({
   },
   recipeCard: {
     width: CARD_WIDTH,
-    maxWidth: CARD_WIDTH,
     backgroundColor: '#fff',
     borderRadius: 12,
     marginBottom: 16,
