@@ -1,9 +1,11 @@
 import { ThemedText } from '@/components/themed-text';
 import { apiService } from '@/services/api';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
 import {
   Alert,
   Image,
+  Platform,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -57,9 +59,94 @@ export default function PublishRecipeScreen() {
     setPreparationSteps(newSteps);
   };
 
-  const handleImagePicker = () => {
-    // Placeholder for image picker - in a real app, you would use expo-image-picker
-    Alert.alert('Image Picker', 'Image picker functionality will be implemented here');
+  const requestPermissions = async () => {
+    if (Platform.OS !== 'web') {
+      const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
+      const { status: mediaLibraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (cameraStatus !== 'granted' || mediaLibraryStatus !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Sorry, we need camera and media library permissions to use this feature!'
+        );
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const handleImagePicker = (stepId?: number) => {
+    Alert.alert(
+      'Select Image',
+      'Choose an option',
+      [
+        {
+          text: 'Camera',
+          onPress: () => handleTakePhoto(stepId),
+        },
+        {
+          text: 'Photo Library',
+          onPress: () => handlePickImage(stepId),
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const handleTakePhoto = async (stepId?: number) => {
+    const hasPermission = await requestPermissions();
+    if (!hasPermission) return;
+
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const imageUri = result.assets[0].uri;
+        if (stepId) {
+          handleStepImageChange(stepId, imageUri);
+        } else {
+          setMainImageUri(imageUri);
+        }
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to take photo');
+      console.error(error);
+    }
+  };
+
+  const handlePickImage = async (stepId?: number) => {
+    const hasPermission = await requestPermissions();
+    if (!hasPermission) return;
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const imageUri = result.assets[0].uri;
+        if (stepId) {
+          handleStepImageChange(stepId, imageUri);
+        } else {
+          setMainImageUri(imageUri);
+        }
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to pick image');
+      console.error(error);
+    }
   };
 
   const handlePost = async () => {
@@ -143,7 +230,7 @@ export default function PublishRecipeScreen() {
         {/* Main Image Upload Area */}
         <TouchableOpacity
           style={styles.mainImageContainer}
-          onPress={handleImagePicker}
+          onPress={() => handleImagePicker()}
           activeOpacity={0.8}
         >
           {mainImageUri ? (
@@ -213,7 +300,7 @@ export default function PublishRecipeScreen() {
               <ThemedText style={styles.stepLabel}>{index + 1}. step</ThemedText>
               <TouchableOpacity
                 style={styles.stepImageContainer}
-                onPress={() => handleImagePicker()}
+                onPress={() => handleImagePicker(step.id)}
                 activeOpacity={0.8}
               >
                 {step.imageUri ? (
