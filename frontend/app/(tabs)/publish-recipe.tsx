@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, View} from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { apiService } from '@/services/api';
@@ -53,9 +53,6 @@ export default function PublishRecipeScreen() {
     <ThemedView style={styles.container}>
       <ThemedView style={styles.header}>
         <ThemedText type="title">Add a new recipe</ThemedText>
-        <TouchableOpacity onPress={handleCreate} disabled={loading}>
-          <ThemedText style={styles.saveButton}>{loading ? 'Adding Recipe...' : 'Add Recipe'}</ThemedText>
-        </TouchableOpacity>
       </ThemedView>
       <ScrollView style={styles.scrollView}>
         <ThemedText style={styles.label}>Name of recipe *</ThemedText>
@@ -73,7 +70,6 @@ export default function PublishRecipeScreen() {
           placeholder="Choose tags"
           multiline
         />
-        {/* I had to add a field, so I just copied the code for "Tags/category" and hope it'll work */}
         <ThemedText style={styles.label}>Preparation time</ThemedText>
         <TextInput
           style={[styles.input, styles.textArea]}
@@ -87,9 +83,14 @@ export default function PublishRecipeScreen() {
           style={[styles.input, styles.textArea]}
           value={ingredients}
           onChangeText={setIngredients}
-          placeholder="Choose tags"
+          placeholder="Choose Ingredients"
           multiline
         />
+        <View style={styles.button}>
+          <TouchableOpacity onPress={handleCreate} style={styles.button}>
+            <ThemedText style={styles.ingredientButton}>{'Add ingredient'}</ThemedText>
+          </TouchableOpacity>
+        </View>
         {/* there is no placeholder on Figma - how can I make it look like in Figma? */}
         <ThemedText style={styles.label}>Preparation *</ThemedText>
         <TextInput
@@ -99,6 +100,15 @@ export default function PublishRecipeScreen() {
           placeholder="Step-by-step instructions"
           multiline
         />
+        <View style={styles.buttonRow}>
+          <TouchableOpacity onPress={handleCreate} disabled={loading} style={styles.button}>
+            <ThemedText style={styles.saveButton}>{loading ? 'Posting...' : 'Post'}</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleCreate} style={styles.button}>
+            <ThemedText style={styles.deleteButton}>Delete</ThemedText>
+          </TouchableOpacity>
+        </View>
+
       </ScrollView>
     </ThemedView>
   );
@@ -111,7 +121,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#81B29A',
   },
   header: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
@@ -119,10 +128,49 @@ const styles = StyleSheet.create({
     borderBottomColor: '#ddd',
     backgroundColor: '#81B29A',
   },
-  saveButton: {
-    color: '#007AFF',
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+  },
+  button: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 10,
+    marginHorizontal: 5,
+    borderRadius: 8,
+    textAlign: 'center',
+  },
+  ingredientButton: {
+    flexDirection: 'row',
+    color: '#fff',
     fontWeight: '600',
-    backgroundColor: '#fff',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    backgroundColor: '#A20021',
+    textAlign: 'right',
+    borderRadius: 6, //rounded corners
+  },
+  saveButton: {
+    flexDirection: 'row',
+    color: '#fff',
+    fontWeight: '600',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    backgroundColor: '#A20021',
+    textAlign: 'center',
+    borderRadius: 6, //rounded corners
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    color: '#fff',
+    fontWeight: '600',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    padding: 2,
+    backgroundColor: '#A20021',
+    textAlign: 'center',
+    borderRadius: 6, //rounded corners
   },
   /* background of body */
   scrollView: {
