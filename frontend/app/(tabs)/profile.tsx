@@ -1,65 +1,87 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, ScrollView, TouchableOpacity, View, Image } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { apiService, FoodStatus, Recipe, User } from '@/services/api';
+import { mockRecipes, mockStories, mockUsers } from '@/services/mockData';
 import { useRouter } from 'expo-router';
-import { apiService, Recipe, User } from '@/services/api';
-import { mockUsers, mockRecipes } from '@/services/mockData';
+import React, { useEffect, useState } from 'react';
+import { Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = (width - 48) / 2; // 2 columns with padding
+
+type TabType = 'recipes' | 'stories';
 
 export default function ProfileScreen() {
   const [user, setUser] = useState<User | null>(null);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [stories, setStories] = useState<FoodStatus[]>([]);
+  const [activeTab, setActiveTab] = useState<TabType>('recipes');
   const [loading, setLoading] = useState(true);
   const [recipesLoading, setRecipesLoading] = useState(true);
+  const [storiesLoading, setStoriesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     loadUserData();
-    loadRecipes();
   }, []);
 
   const loadUserData = async () => {
     try {
       setError(null);
       setLoading(true);
-      // Note: This is a placeholder. In a real app, you'd get the current authenticated user
-      // For now, we'll fetch the first user as a demo
       const users = await apiService.getUsers();
       if (users.length > 0) {
-        setUser(users[0]);
+        const currentUser = users[0];
+        setUser(currentUser);
+        loadRecipes(currentUser);
+        loadStories(currentUser);
       } else if (__DEV__) {
-        // Fallback to mock user in development
         console.log('Using mock user as fallback');
-        setUser(mockUsers[0]);
+        const mockUser = mockUsers[0];
+        setUser(mockUser);
+        loadRecipes(mockUser);
+        loadStories(mockUser);
       }
     } catch (error: any) {
       console.error('Error loading user data:', error);
       setError(error.message || 'Failed to load user data');
-      // Fallback to mock user in development mode when API fails
       if (__DEV__) {
         console.log('Using mock user as fallback');
-        setUser(mockUsers[0]);
+        const mockUser = mockUsers[0];
+        setUser(mockUser);
+        loadRecipes(mockUser);
+        loadStories(mockUser);
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const loadRecipes = async () => {
+  const loadRecipes = async (currentUser?: User | null) => {
     try {
       setRecipesLoading(true);
       const data = await apiService.getRecipes();
-      // Filter recipes by the current user if available
-      // For now, show all recipes since we don't have current user context
-      // Use API data if available, otherwise fallback to mock data
-      setRecipes(data.length > 0 ? data : mockRecipes);
+      const userToFilter = currentUser || user;
+      const filteredData = userToFilter
+        ? data.filter(recipe => recipe.author.id === userToFilter.id)
+        : data;
+      if (filteredData.length > 0) {
+        setRecipes(filteredData);
+      } else {
+        const filteredMock = userToFilter
+          ? mockRecipes.filter(r => r.author.id === userToFilter.id)
+          : mockRecipes;
+        setRecipes(filteredMock);
+      }
     } catch (error: any) {
       console.error('Error loading recipes:', error);
-      // Fallback to mock data in development mode when API fails
       if (__DEV__) {
-        console.log('Using mock recipes as fallback');
-        setRecipes(mockRecipes);
+        const userToFilter = currentUser || user;
+        const filteredMock = userToFilter
+          ? mockRecipes.filter(r => r.author.id === userToFilter.id)
+          : mockRecipes;
+        setRecipes(filteredMock);
       } else {
         setRecipes([]);
       }
@@ -68,144 +90,502 @@ export default function ProfileScreen() {
     }
   };
 
+  const loadStories = async (currentUser?: User | null) => {
+    try {
+      setStoriesLoading(true);
+      const data = await apiService.getFoodStatuses();
+      const userToFilter = currentUser || user;
+      const filteredData = userToFilter
+        ? data.filter(story => story.author.id === userToFilter.id)
+        : data;
+      if (filteredData.length > 0) {
+        setStories(filteredData);
+      } else {
+        const filteredMock = userToFilter
+          ? mockStories.filter(s => s.author.id === userToFilter.id)
+          : mockStories;
+        setStories(filteredMock);
+      }
+    } catch (error: any) {
+      console.error('Error loading stories:', error);
+      if (__DEV__) {
+        const userToFilter = currentUser || user;
+        const filteredMock = userToFilter
+          ? mockStories.filter(s => s.author.id === userToFilter.id)
+          : mockStories;
+        setStories(filteredMock);
+      } else {
+        setStories([]);
+      }
+    } finally {
+      setStoriesLoading(false);
+    }
+  };
+
+  // Generate a profile ID based on user ID
+  const getProfileId = () => {
+    if (user?.id) {
+      return `1KGZ${user.id.toString().padStart(3, '0')}`;
+    }
+    return '1KGZ123';
+  };
+
+  // Get join date (using created_at if available, otherwise use a default date)
+  const getJoinDate = () => {
+    // For now, use a default date. In a real app, this would come from user data
+    return '14.11.25';
+  };
+
+  // Austria Flag Component (horizontal stripes: red-white-red)
+  const AustriaFlag = () => (
+    <View style={styles.flagContainer}>
+      <View style={[styles.flagStripe, { backgroundColor: '#ED2939' }]} />
+      <View style={[styles.flagStripe, { backgroundColor: '#FFFFFF' }]} />
+      <View style={[styles.flagStripe, { backgroundColor: '#ED2939' }]} />
+    </View>
+  );
+
   return (
-    <ThemedView style={styles.container}>
-      <ThemedView style={styles.header}>
-        <ThemedText type="title">Profile</ThemedText>
-      </ThemedView>
-      <ScrollView style={styles.scrollView}>
-        <ThemedView style={styles.profileCard}>
-          <ThemedText type="subtitle">User Profile</ThemedText>
-          {loading ? (
-            <ThemedText style={styles.info}>Loading user data...</ThemedText>
-          ) : user ? (
-            <>
-              <ThemedText style={styles.info}>Username: {user.username}</ThemedText>
-              <ThemedText style={styles.info}>Email: {user.email || 'N/A'}</ThemedText>
-              {user.first_name || user.last_name ? (
-                <ThemedText style={styles.info}>
-                  Name: {[user.first_name, user.last_name].filter(Boolean).join(' ') || 'N/A'}
-                </ThemedText>
-              ) : null}
-            </>
-          ) : (
-            <ThemedText style={styles.info}>
-              User profile requires authentication. Please log in to view your profile.
+    <View style={styles.container}>
+      {/* Header with coral background */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <ThemedText style={styles.headerTitle} lightColor="#fff" darkColor="#fff">
+            Your profil
+          </ThemedText>
+          <TouchableOpacity style={styles.menuButton}>
+            <IconSymbol name="line.3.horizontal" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Profile Content Section */}
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ThemedText style={styles.loadingText} lightColor="#fff" darkColor="#fff">
+              Loading...
             </ThemedText>
-          )}
-        </ThemedView>
-        <ThemedView style={styles.section}>
-          <ThemedText type="subtitle">My Recipes</ThemedText>
-          {recipesLoading ? (
-            <ThemedText style={styles.emptyText}>Loading recipes...</ThemedText>
-          ) : recipes.length === 0 ? (
-            <ThemedText style={styles.emptyText}>No recipes yet. Create your first recipe!</ThemedText>
-          ) : (
-            <View style={styles.recipesList}>
-              {recipes.map((recipe) => (
-                <TouchableOpacity
-                  key={recipe.id}
-                  style={styles.recipeItem}
-                  onPress={() => router.push(`/recipeDetail/${recipe.id}`)}
+          </View>
+        ) : user ? (
+          <>
+            <View style={styles.profileInfoContainer}>
+              {/* Left side - User Information */}
+              <View style={styles.userInfo}>
+                <ThemedText style={styles.userName} lightColor="#fff" darkColor="#fff">
+                  {user.username}
+                </ThemedText>
+                <ThemedText style={styles.profileId} lightColor="#999" darkColor="#999">
+                  Profile ID: {getProfileId()}
+                </ThemedText>
+                <ThemedText style={styles.bio} lightColor="#fff" darkColor="#fff">
+                  I love food because you can eat it!
+                </ThemedText>
+                <View style={styles.joinInfo}>
+                  <AustriaFlag />
+                  <ThemedText style={styles.joinDate} lightColor="#fff" darkColor="#fff">
+                    Joined: {getJoinDate()}
+                  </ThemedText>
+                </View>
+              </View>
+
+              {/* Right side - Profile Picture Placeholder */}
+              <View style={styles.avatarContainer}>
+                <View style={styles.avatarPlaceholder}>
+                  <IconSymbol name="photo" size={50} color="#999" />
+                </View>
+              </View>
+            </View>
+
+            {/* Tabs */}
+            <View style={styles.tabsContainer}>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'recipes' && styles.tabActive]}
+                onPress={() => setActiveTab('recipes')}
+              >
+                <ThemedText
+                  style={[styles.tabText, activeTab === 'recipes' && styles.tabTextActive]}
+                  lightColor={activeTab === 'recipes' ? '#C97D60' : '#666'}
+                  darkColor={activeTab === 'recipes' ? '#C97D60' : '#999'}
                 >
-                  {recipe.image_url ? (
-                    <Image 
-                      source={{ uri: recipe.image_url }} 
-                      style={styles.recipeThumbnail}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={styles.recipeThumbnailPlaceholder}>
-                      <ThemedText style={styles.recipeThumbnailText}>No Image</ThemedText>
-                    </View>
-                  )}
-                  <View style={styles.recipeInfo}>
-                    <ThemedText style={styles.recipeTitle}>{recipe.title}</ThemedText>
-                    <ThemedText style={styles.recipeMeta}>
-                      {new Date(recipe.created_at).toLocaleDateString()}
+                  Your Recipe
+                </ThemedText>
+                {activeTab === 'recipes' && <View style={styles.tabUnderline} />}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'stories' && styles.tabActive]}
+                onPress={() => setActiveTab('stories')}
+              >
+                <ThemedText
+                  style={[styles.tabText, activeTab === 'stories' && styles.tabTextActive]}
+                  lightColor={activeTab === 'stories' ? '#C97D60' : '#666'}
+                  darkColor={activeTab === 'stories' ? '#C97D60' : '#999'}
+                >
+                  Your Stories
+                </ThemedText>
+                {activeTab === 'stories' && <View style={styles.tabUnderline} />}
+              </TouchableOpacity>
+            </View>
+
+            {/* Content Grid */}
+            <View style={styles.contentGrid}>
+              {activeTab === 'recipes' ? (
+                recipesLoading ? (
+                  <View style={styles.loadingContainer}>
+                    <ThemedText style={styles.loadingText} lightColor="#999" darkColor="#999">
+                      Loading recipes...
                     </ThemedText>
                   </View>
-                </TouchableOpacity>
-              ))}
+                ) : recipes.length === 0 ? (
+                  <View style={styles.emptyContainer}>
+                    <ThemedText style={styles.emptyText} lightColor="#999" darkColor="#999">
+                      No recipes yet. Create your first recipe!
+                    </ThemedText>
+                  </View>
+                ) : (
+                  recipes.map((recipe) => (
+                    <TouchableOpacity
+                      key={recipe.id}
+                      style={styles.recipeCard}
+                      onPress={() => router.push(`/recipeDetail/${recipe.id}`)}
+                      activeOpacity={0.7}
+                    >
+                      {recipe.image_url ? (
+                        <Image
+                          source={{ uri: recipe.image_url }}
+                          style={styles.recipeImage}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={styles.recipeImagePlaceholder}>
+                          <ThemedText style={styles.placeholderText}>No Image</ThemedText>
+                        </View>
+                      )}
+                      <View style={styles.recipeCardContent}>
+                        <View style={styles.recipeHeader}>
+                          <ThemedText style={styles.recipeTitle} numberOfLines={1} lightColor="#000" darkColor="#000">
+                            {recipe.title}
+                          </ThemedText>
+                          <ThemedText style={styles.recipeDate} lightColor="#666" darkColor="#666">
+                            {new Date(recipe.created_at).toLocaleDateString('en-GB', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric'
+                            }).replace(/\//g, '.')}
+                          </ThemedText>
+                        </View>
+                        <View style={styles.divider} />
+                        <View style={styles.recipeAuthorRow}>
+                          <View style={styles.authorAvatar}>
+                            <ThemedText style={styles.avatarText}>
+                              {recipe.author.username.charAt(0).toUpperCase()}
+                            </ThemedText>
+                          </View>
+                          <ThemedText style={styles.authorName} lightColor="#000" darkColor="#000">
+                            {recipe.author.username}
+                          </ThemedText>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                )
+              ) : (
+                storiesLoading ? (
+                  <View style={styles.loadingContainer}>
+                    <ThemedText style={styles.loadingText} lightColor="#999" darkColor="#999">
+                      Loading stories...
+                    </ThemedText>
+                  </View>
+                ) : stories.length === 0 ? (
+                  <View style={styles.emptyContainer}>
+                    <ThemedText style={styles.emptyText} lightColor="#999" darkColor="#999">
+                      No stories yet. Share your first story!
+                    </ThemedText>
+                  </View>
+                ) : (
+                  stories.map((story) => (
+                    <TouchableOpacity
+                      key={story.id}
+                      style={styles.recipeCard}
+                      activeOpacity={0.7}
+                    >
+                      {story.image_url ? (
+                        <Image
+                          source={{ uri: story.image_url }}
+                          style={styles.recipeImage}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={styles.recipeImagePlaceholder}>
+                          <ThemedText style={styles.placeholderText}>No Image</ThemedText>
+                        </View>
+                      )}
+                      <View style={styles.recipeCardContent}>
+                        <ThemedText style={styles.storyContent} numberOfLines={2} lightColor="#000" darkColor="#000">
+                          {story.content}
+                        </ThemedText>
+                        <View style={styles.divider} />
+                        <View style={styles.recipeAuthorRow}>
+                          <View style={styles.authorAvatar}>
+                            <ThemedText style={styles.avatarText}>
+                              {story.author.username.charAt(0).toUpperCase()}
+                            </ThemedText>
+                          </View>
+                          <ThemedText style={styles.authorName} lightColor="#000" darkColor="#000">
+                            {story.author.username}
+                          </ThemedText>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                )
+              )}
             </View>
-          )}
-        </ThemedView>
+          </>
+        ) : (
+          <View style={styles.errorContainer}>
+            <ThemedText style={styles.errorText} lightColor="#fff" darkColor="#fff">
+              {error || 'Failed to load user data'}
+            </ThemedText>
+          </View>
+        )}
       </ScrollView>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 60,
+    backgroundColor: '#363636', // Dark gray background
   },
   header: {
-    padding: 16,
+    backgroundColor: '#C97D60', // Coral/terracotta color
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 16,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  menuButton: {
+    padding: 4,
   },
   scrollView: {
     flex: 1,
   },
-  profileCard: {
-    padding: 16,
-    margin: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
+  scrollContent: {
+    backgroundColor: '#363636',
+    padding: 20,
+    paddingBottom: 100,
   },
-  info: {
-    marginTop: 8,
-  },
-  section: {
-    padding: 16,
-  },
-  emptyText: {
-    marginTop: 8,
-    opacity: 0.6,
-  },
-  recipesList: {
-    marginTop: 8,
-  },
-  recipeItem: {
+  profileInfoContainer: {
     flexDirection: 'row',
-    padding: 12,
-    marginBottom: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    alignItems: 'flex-start',
+    marginTop: 20,
+  },
+  userInfo: {
+    flex: 1,
+    marginRight: 20,
+  },
+  userName: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginTop: 8,
+  },
+  profileId: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 8,
+  },
+  bio: {
+    fontSize: 16,
+    color: '#fff',
+    marginTop: 12,
+  },
+  joinInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  flagContainer: {
+    width: 24,
+    height: 18,
+    flexDirection: 'column',
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginRight: 8,
+  },
+  flagStripe: {
+    flex: 1,
+  },
+  joinDate: {
+    fontSize: 14,
+    color: '#fff',
+  },
+  avatarContainer: {
+    width: 120,
+    height: 120,
+  },
+  avatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#E0E0E0',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#fff',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#fff',
+    textAlign: 'center',
+  },
+  tabsContainer: {
+    flexDirection: 'row',
+    marginTop: 24,
+    marginBottom: 16,
+  },
+  tab: {
+    paddingBottom: 8,
+    marginRight: 24,
+  },
+  tabActive: {
+    // Active state handled by underline
+  },
+  tabText: {
+    fontSize: 18,
+    fontWeight: '500',
+  },
+  tabTextActive: {
+    fontWeight: '600',
+  },
+  tabUnderline: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 2,
+    backgroundColor: '#C97D60',
+  },
+  contentGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  recipeCard: {
+    width: CARD_WIDTH,
     backgroundColor: '#fff',
+    borderRadius: 12,
+    marginBottom: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  recipeThumbnail: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    marginRight: 12,
+  recipeImage: {
+    width: '100%',
+    height: CARD_WIDTH * 0.75,
+    backgroundColor: '#f0f0f0',
   },
-  recipeThumbnailPlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
+  recipeImagePlaceholder: {
+    width: '100%',
+    height: CARD_WIDTH * 0.75,
     backgroundColor: '#E0E0E0',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
-  recipeThumbnailText: {
-    fontSize: 10,
+  placeholderText: {
+    fontSize: 12,
     color: '#999',
   },
-  recipeInfo: {
-    flex: 1,
-    justifyContent: 'center',
+  recipeCardContent: {
+    padding: 12,
+  },
+  recipeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   recipeTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
-    marginBottom: 4,
+    color: '#000',
+    flex: 1,
   },
-  recipeMeta: {
-    fontSize: 12,
-    opacity: 0.6,
+  recipeDate: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
+  },
+  storyContent: {
+    fontSize: 16,
+    color: '#000',
+    marginBottom: 8,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    marginBottom: 8,
+  },
+  recipeAuthorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  authorAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#E0E0E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  avatarText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  authorName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#000',
+  },
+  emptyContainer: {
+    width: '100%',
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#999',
+    textAlign: 'center',
   },
 });
 
